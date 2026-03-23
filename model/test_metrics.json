@@ -1,0 +1,92 @@
+[
+  {
+    "split": "train",
+    "metric": "rmse",
+    "value": 44706.89266597141
+  },
+  {
+    "split": "train",
+    "metric": "mae",
+    "value": 24686.899729279157
+  },
+  {
+    "split": "train",
+    "metric": "r2",
+    "value": 0.9846029111152542
+  },
+  {
+    "split": "train",
+    "metric": "medae",
+    "value": 13855.099999999977
+  },
+  {
+    "split": "train",
+    "metric": "mape",
+    "value": 0.04770299665546184
+  },
+  {
+    "split": "train",
+    "metric": "bias",
+    "value": -194.91903653412027
+  },
+  {
+    "split": "train",
+    "metric": "wape",
+    "value": 0.04593165524098486
+  },
+  {
+    "split": "train",
+    "metric": "pct_within_10",
+    "value": 0.893269171447961
+  },
+  {
+    "split": "train",
+    "metric": "pct_within_20",
+    "value": 0.9755074341415263
+  },
+  {
+    "split": "holdout",
+    "metric": "rmse",
+    "value": 131120.33930980205
+  },
+  {
+    "split": "holdout",
+    "metric": "mae",
+    "value": 69115.92755518215
+  },
+  {
+    "split": "holdout",
+    "metric": "r2",
+    "value": 0.8850670738371323
+  },
+  {
+    "split": "holdout",
+    "metric": "medae",
+    "value": 39192.090000000084
+  },
+  {
+    "split": "holdout",
+    "metric": "mape",
+    "value": 0.12808967898613974
+  },
+  {
+    "split": "holdout",
+    "metric": "bias",
+    "value": -2703.757146527631
+  },
+  {
+    "split": "holdout",
+    "metric": "wape",
+    "value": 0.126137704967818
+  },
+  {
+    "split": "holdout",
+    "metric": "pct_within_10",
+    "value": 0.5551443375277573
+  },
+  {
+    "split": "holdout",
+    "metric": "pct_within_20",
+    "value": 0.8158771280532938
+  }
+]
