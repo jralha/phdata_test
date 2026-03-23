@@ -79,7 +79,8 @@ def _build_feature_frame(homes: List[HomeFeatures]) -> pandas.DataFrame:
 
     merged = raw.merge(state["demographics"], how="left", on="zipcode")
 
-    missing_zip = merged["zipcode"][merged[state["features"][0]].isna()].unique().tolist()
+    missing_mask = merged[state["features"]].isnull().any(axis=1)
+    missing_zip = merged.loc[missing_mask, "zipcode"].unique().tolist()
     if missing_zip:
         raise HTTPException(
             status_code=422,
