@@ -14,3 +14,11 @@ services:
       - ./model:/app/model   # writes model.pkl and model_features.json to host
     profiles:
       - train                # only runs when explicitly requested
+
+  test:
+    build: .
+    command: python -m pytest tests/test_api.py -v
+    volumes:
+      - ./model:/app/model   # uses the latest trained model artifacts
+    profiles:
+      - test                 # only runs when explicitly requested

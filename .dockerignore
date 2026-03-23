@@ -1,5 +1,4 @@
 data/kc_house_data.csv
-data/future_unseen_examples.csv
 conda_environment.yml
 .git
 __pycache__
