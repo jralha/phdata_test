@@ -1,0 +1,16 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./model:/app/model   # picks up freshly trained artifacts without rebuild
+
+  train:
+    build: .
+    command: python create_model.py
+    volumes:
+      - ./data:/app/data     # provides kc_house_data.csv and demographics at train time
+      - ./model:/app/model   # writes model.pkl and model_features.json to host
+    profiles:
+      - train                # only runs when explicitly requested

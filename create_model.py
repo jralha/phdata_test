@@ -10,14 +10,13 @@ from sklearn import neighbors
 from sklearn import pipeline
 from sklearn import preprocessing
 
-SALES_PATH = "data/kc_house_data.csv"  # path to CSV with home sale data
-DEMOGRAPHICS_PATH = "data/kc_house_data.csv"  # path to CSV with demographics
-# List of columns (subset) that will be taken from home sale data
+SALES_PATH = "data/kc_house_data.csv"
+DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"
 SALES_COLUMN_SELECTION = [
     'price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors',
     'sqft_above', 'sqft_basement', 'zipcode'
 ]
-OUTPUT_DIR = "model"  # Directory where output artifacts will be saved
+OUTPUT_DIR = "model"
 
 
 def load_data(
@@ -27,25 +26,23 @@ def load_data(
 
     Args:
         sales_path: path to CSV file with home sale data
-        demographics_path: path to CSV file with home sale data
+        demographics_path: path to CSV file with demographics data
         sales_column_selection: list of columns from sales data to be used as
             features
 
     Returns:
-        Tuple containg with two elements: a DataFrame and a Series of the same
+        Tuple containing two elements: a DataFrame and a Series of the same
         length.  The DataFrame contains features for machine learning, the
-        series contains the target variable (home sale price).
-
+        Series contains the target variable (home sale price).
     """
     data = pandas.read_csv(sales_path,
                            usecols=sales_column_selection,
                            dtype={'zipcode': str})
-    demographics = pandas.read_csv("data/zipcode_demographics.csv",
+    demographics = pandas.read_csv(demographics_path,
                                    dtype={'zipcode': str})
 
     merged_data = data.merge(demographics, how="left",
                              on="zipcode").drop(columns="zipcode")
-    # Remove the target variable from the dataframe, features will remain
     y = merged_data.pop('price')
     x = merged_data
 
@@ -65,10 +62,11 @@ def main():
     output_dir = pathlib.Path(OUTPUT_DIR)
     output_dir.mkdir(exist_ok=True)
 
-    # Output model artifacts: pickled model and JSON list of features
     pickle.dump(model, open(output_dir / "model.pkl", 'wb'))
     json.dump(list(x_train.columns),
               open(output_dir / "model_features.json", 'w'))
+
+    print(f"Model artifacts written to {output_dir.resolve()}")
 
 
 if __name__ == "__main__":
