@@ -6,9 +6,7 @@ from typing import Tuple
 
 import pandas
 from sklearn import model_selection
-from sklearn import neighbors
-from sklearn import pipeline
-from sklearn import preprocessing
+from sklearn.ensemble import RandomForestRegressor
 
 from sklearn.metrics import (
     mean_absolute_error,
@@ -23,9 +21,50 @@ SALES_PATH = f"{DATA_DIR}/kc_house_data.csv"
 DEMOGRAPHICS_PATH = f"{DATA_DIR}/zipcode_demographics.csv"
 SALES_COLUMN_SELECTION = [
     'price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors',
-    'sqft_above', 'sqft_basement', 'zipcode'
+    'sqft_above', 'sqft_basement', 'waterfront', 'view', 'condition',
+    'grade', 'yr_built', 'yr_renovated', 'lat', 'long', 'sqft_living15',
+    'sqft_lot15', 'zipcode'
 ]
 OUTPUT_DIR = "model"
+OPTIONAL_INPUT_COLUMNS = [
+    "waterfront",
+    "view",
+    "condition",
+    "grade",
+    "yr_built",
+    "yr_renovated",
+    "lat",
+    "long",
+    "sqft_living15",
+    "sqft_lot15",
+]
+
+
+def train_model_with_hpo(x_train: pandas.DataFrame, y_train: pandas.Series):
+    """Train a RandomForestRegressor using a small randomized CV search."""
+    base_model = RandomForestRegressor(
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    param_distributions = {
+        "n_estimators": [200, 400, 700],
+        "max_depth": [None, 20, 40],
+        "min_samples_leaf": [1, 2, 4],
+        "max_features": ["sqrt", 0.6, 1.0],
+    }
+
+    search = model_selection.RandomizedSearchCV(
+        estimator=base_model,
+        param_distributions=param_distributions,
+        n_iter=12,
+        cv=3,
+        scoring="neg_root_mean_squared_error",
+        random_state=42,
+        n_jobs=-1,
+    )
+    search.fit(x_train, y_train)
+    return search.best_estimator_, search.best_params_, -search.best_score_
 
 
 def calculate_metrics(y_true: pandas.Series, y_pred, split: str) -> List[dict]:
@@ -91,15 +130,27 @@ def load_data(
     return x, y
 
 
+def compute_input_feature_defaults(data: pandas.DataFrame) -> dict:
+    """Return median defaults for optional input fields."""
+    defaults = {}
+    for col in OPTIONAL_INPUT_COLUMNS:
+        defaults[col] = float(data[col].median())
+    return defaults
+
+
 def main():
     """Load data, train model, and export artifacts."""
+    sales_data = pandas.read_csv(
+        SALES_PATH,
+        usecols=SALES_COLUMN_SELECTION,
+        dtype={"zipcode": str},
+    )
+    input_feature_defaults = compute_input_feature_defaults(sales_data)
     x, y = load_data(SALES_PATH, DEMOGRAPHICS_PATH, SALES_COLUMN_SELECTION)
     x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, random_state=42)
 
-    model = pipeline.make_pipeline(preprocessing.RobustScaler(),
-                                   neighbors.KNeighborsRegressor()).fit(
-                                       x_train, y_train)
+    model, best_params, cv_rmse = train_model_with_hpo(x_train, y_train)
 
     output_dir = pathlib.Path(OUTPUT_DIR)
     output_dir.mkdir(exist_ok=True)
@@ -107,6 +158,8 @@ def main():
     pickle.dump(model, open(output_dir / "model.pkl", 'wb'))
     json.dump(list(x_train.columns),
               open(output_dir / "model_features.json", 'w'))
+    with open(output_dir / "input_feature_defaults.json", "w") as f:
+        json.dump(input_feature_defaults, f, indent=2)
 
     print(f"Model artifacts written to {output_dir.resolve()}")
 
@@ -117,7 +170,17 @@ def main():
     with open(output_dir / "test_metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
+    hpo_report = {
+        "model": "RandomForestRegressor",
+        "search": "RandomizedSearchCV",
+        "best_params": best_params,
+        "best_cv_rmse": float(cv_rmse),
+    }
+    with open(output_dir / "hpo_results.json", "w") as f:
+        json.dump(hpo_report, f, indent=2)
+
     print("Saved metrics to model/test_metrics.json")
+    print("Saved HPO report to model/hpo_results.json")
 
 
 if __name__ == "__main__":

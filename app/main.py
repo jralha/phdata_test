@@ -2,6 +2,7 @@ import json
 import pickle
 from contextlib import asynccontextmanager
 from typing import List
+from typing import Optional
 
 import pandas
 from fastapi import FastAPI, HTTPException
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 
 MODEL_PATH = "model/model.pkl"
 FEATURES_PATH = "model/model_features.json"
+INPUT_FEATURE_DEFAULTS_PATH = "model/input_feature_defaults.json"
 DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"
 PAYLOAD_SHAPE_DOC = (
     "Request body must be a JSON array of home records. Each record should "
@@ -50,6 +52,12 @@ async def lifespan(app: FastAPI):
     with open(FEATURES_PATH, "r") as f:
         state["features"] = json.load(f)
 
+    try:
+        with open(INPUT_FEATURE_DEFAULTS_PATH, "r") as f:
+            state["input_feature_defaults"] = json.load(f)
+    except FileNotFoundError:
+        state["input_feature_defaults"] = {}
+
     state["demographics"] = pandas.read_csv(
         DEMOGRAPHICS_PATH, dtype={"zipcode": str}
     )
@@ -83,16 +91,16 @@ class HomeFeatures(BaseModel):
     zipcode: str
     # The following columns are accepted for API compatibility but are not
     # used by the current model.
-    waterfront: float = 0
-    view: float = 0
-    condition: float = 0
-    grade: float = 0
-    yr_built: float = 0
-    yr_renovated: float = 0
-    lat: float = 0
-    long: float = 0
-    sqft_living15: float = 0
-    sqft_lot15: float = 0
+    waterfront: Optional[float] = None
+    view: Optional[float] = None
+    condition: Optional[float] = None
+    grade: Optional[float] = None
+    yr_built: Optional[float] = None
+    yr_renovated: Optional[float] = None
+    lat: Optional[float] = None
+    long: Optional[float] = None
+    sqft_living15: Optional[float] = None
+    sqft_lot15: Optional[float] = None
 
 
 class BatchPredictionResponse(BaseModel):
@@ -102,6 +110,10 @@ def _build_feature_frame(homes: List[HomeFeatures]) -> pandas.DataFrame:
     """Merge home data with demographics and return df for prediction"""
     raw = pandas.DataFrame([h.model_dump() for h in homes])
     raw["zipcode"] = raw["zipcode"].astype(str)
+
+    for col, default in state["input_feature_defaults"].items():
+        if col in raw.columns:
+            raw[col] = raw[col].fillna(default)
 
     merged = raw.merge(state["demographics"], how="left", on="zipcode")
 

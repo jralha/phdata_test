@@ -25,6 +25,8 @@ docker compose --profile train run --rm train
 
 This executes the pytest suite inside Docker using the trained model artifacts from `./model`.
 
+Tests include model performance reports.
+
 ```sh
 docker compose --profile test run --rm test
 ```
