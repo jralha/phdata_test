@@ -3,7 +3,6 @@ import pathlib
 import pickle
 from typing import List
 from typing import Tuple
-from xml.parsers.expat import model
 
 import pandas
 from sklearn import model_selection
@@ -27,6 +26,39 @@ SALES_COLUMN_SELECTION = [
     'sqft_above', 'sqft_basement', 'zipcode'
 ]
 OUTPUT_DIR = "model"
+
+
+def calculate_metrics(y_true: pandas.Series, y_pred, split: str) -> List[dict]:
+    """Calculate regression metrics for a given data split."""
+    rmse = mean_squared_error(y_true, y_pred, squared=False)
+    mae = mean_absolute_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    medae = median_absolute_error(y_true, y_pred)
+    mape = mean_absolute_percentage_error(y_true, y_pred)
+    bias = (y_pred - y_true).mean()
+    wape = (y_true - y_pred).abs().sum() / y_true.abs().sum()
+    pct_within_10 = ((y_true - y_pred).abs() / y_true <= 0.10).mean()
+    pct_within_20 = ((y_true - y_pred).abs() / y_true <= 0.20).mean()
+
+    return [
+        {"split": split, "metric": "rmse", "value": float(rmse)},
+        {"split": split, "metric": "mae", "value": float(mae)},
+        {"split": split, "metric": "r2", "value": float(r2)},
+        {"split": split, "metric": "medae", "value": float(medae)},
+        {"split": split, "metric": "mape", "value": float(mape)},
+        {"split": split, "metric": "bias", "value": float(bias)},
+        {"split": split, "metric": "wape", "value": float(wape)},
+        {
+            "split": split,
+            "metric": "pct_within_10",
+            "value": float(pct_within_10),
+        },
+        {
+            "split": split,
+            "metric": "pct_within_20",
+            "value": float(pct_within_20),
+        },
+    ]
 
 
 def load_data(
@@ -78,36 +110,14 @@ def main():
 
     print(f"Model artifacts written to {output_dir.resolve()}")
 
-    # Test performance on _x_test
-    y_pred = model.predict(x_test)
+    train_metrics = calculate_metrics(y_train, model.predict(x_train), "train")
+    holdout_metrics = calculate_metrics(y_test, model.predict(x_test), "holdout")
+    metrics = train_metrics + holdout_metrics
 
-    # Add performance metrics
+    with open(output_dir / "test_metrics.json", "w") as f:
+        json.dump(metrics, f, indent=2)
 
-    rmse = mean_squared_error(y_test, y_pred, squared=False)
-    mae = mean_absolute_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    medae = median_absolute_error(y_test, y_pred)
-    mape = mean_absolute_percentage_error(y_test, y_pred)
-
-    bias = (y_pred - y_test).mean()
-    wape = (y_test - y_pred).abs().sum() / y_test.abs().sum()
-    pct_within_10 = ((y_test - y_pred).abs() / y_test <= 0.10).mean()
-    pct_within_20 = ((y_test - y_pred).abs() / y_test <= 0.20).mean()
-
-    # Create a DataFrame to hold the metrics
-    metrics_df = pandas.DataFrame({
-        "metric": [
-            "rmse", "mae", "r2", "medae", "mape", "bias", "wape",
-            "pct_within_10", "pct_within_20"
-        ],
-        "value": [
-            rmse, mae, r2, medae, mape, bias, wape, pct_within_10,
-            pct_within_20
-        ]
-    })
-
-    # Save the metrics to a json file
-    metrics_df.to_json(output_dir / "test_metrics.json", orient="records")
+    print("Saved metrics to model/test_metrics.json")
 
 
 if __name__ == "__main__":

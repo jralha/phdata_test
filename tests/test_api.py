@@ -104,7 +104,7 @@ def test_batch_scores_full_unseen_dataset_within_time_budget(client):
 
 
 def test_reports_saved_holdout_metrics_if_valid():
-    """Report model metrics and validate the saved metric values are sane."""
+    """Report model metrics and validate train + holdout values are sane."""
     assert METRICS_PATH.exists(), (
         "Expected model/test_metrics.json. Run training first: "
         "docker compose --profile train run --rm train"
@@ -114,9 +114,16 @@ def test_reports_saved_holdout_metrics_if_valid():
     assert isinstance(metrics_records, list)
     assert metrics_records, "Expected at least one metric record"
 
-    metrics = {
-        record["metric"]: float(record["value"]) for record in metrics_records
-    }
+    assert all("split" in record for record in metrics_records), (
+        "Each metric record must include a split field"
+    )
+
+    metrics_by_split = {}
+    for record in metrics_records:
+        split = record["split"]
+        metric = record["metric"]
+        value = float(record["value"])
+        metrics_by_split.setdefault(split, {})[metric] = value
 
     required_metrics = {
         "rmse",
@@ -129,20 +136,23 @@ def test_reports_saved_holdout_metrics_if_valid():
         "pct_within_10",
         "pct_within_20",
     }
-    missing = required_metrics - set(metrics)
-    assert not missing, f"Missing required metrics: {sorted(missing)}"
+    for split in ("train", "holdout"):
+        assert split in metrics_by_split, f"Missing split: {split}"
+        missing = required_metrics - set(metrics_by_split[split])
+        assert not missing, f"Missing required metrics for {split}: {sorted(missing)}"
 
     # Reports metrics in test output when running with -s (useful for CI logs)
-    print("Saved holdout metrics:", json.dumps(metrics, sort_keys=True))
+    print("Saved metrics:", json.dumps(metrics_by_split, sort_keys=True))
 
-    for name, value in metrics.items():
-        assert math.isfinite(value), f"Metric {name} must be finite"
+    for split, metrics in metrics_by_split.items():
+        for name, value in metrics.items():
+            assert math.isfinite(value), f"Metric {split}.{name} must be finite"
 
-    # Basic validity checks, not quality thresholds.
-    assert metrics["rmse"] >= 0
-    assert metrics["mae"] >= 0
-    assert metrics["medae"] >= 0
-    assert metrics["mape"] >= 0
-    assert metrics["wape"] >= 0
-    assert 0 <= metrics["pct_within_10"] <= 1
-    assert 0 <= metrics["pct_within_20"] <= 1
+        # Basic validity checks, not quality thresholds.
+        assert metrics["rmse"] >= 0
+        assert metrics["mae"] >= 0
+        assert metrics["medae"] >= 0
+        assert metrics["mape"] >= 0
+        assert metrics["wape"] >= 0
+        assert 0 <= metrics["pct_within_10"] <= 1
+        assert 0 <= metrics["pct_within_20"] <= 1

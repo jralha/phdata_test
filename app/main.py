@@ -10,6 +10,32 @@ from pydantic import BaseModel
 MODEL_PATH = "model/model.pkl"
 FEATURES_PATH = "model/model_features.json"
 DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"
+PAYLOAD_SHAPE_DOC = (
+    "Request body must be a JSON array of home records. Each record should "
+    "match the columns from data/future_unseen_examples.csv."
+)
+PAYLOAD_EXAMPLE = [
+    {
+        "bedrooms": 4,
+        "bathrooms": 1.0,
+        "sqft_living": 1680,
+        "sqft_lot": 5043,
+        "floors": 1.5,
+        "waterfront": 0,
+        "view": 0,
+        "condition": 4,
+        "grade": 6,
+        "sqft_above": 1680,
+        "sqft_basement": 0,
+        "yr_built": 1911,
+        "yr_renovated": 0,
+        "zipcode": "98118",
+        "lat": 47.5354,
+        "long": -122.273,
+        "sqft_living15": 1560,
+        "sqft_lot15": 5765,
+    }
+]
 
 
 state: dict = {}
@@ -96,7 +122,36 @@ def health_check():
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Prediction"])
 def predict_batch(homes: List[HomeFeatures]):
-    """Return predicted sale prices for a list of properties."""
+    """Return predicted sale prices for a list of properties.
+
+    Payload shape:
+    - JSON array of objects (not a single object)
+    - Each object follows the fields from `data/future_unseen_examples.csv`
+
+    Example payload:
+        [
+            {
+                "bedrooms": 4,
+                "bathrooms": 1.0,
+                "sqft_living": 1680,
+                "sqft_lot": 5043,
+                "floors": 1.5,
+                "waterfront": 0,
+                "view": 0,
+                "condition": 4,
+                "grade": 6,
+                "sqft_above": 1680,
+                "sqft_basement": 0,
+                "yr_built": 1911,
+                "yr_renovated": 0,
+                "zipcode": "98118",
+                "lat": 47.5354,
+                "long": -122.273,
+                "sqft_living15": 1560,
+                "sqft_lot15": 5765
+            }
+        ]
+    """
     if not homes:
         raise HTTPException(status_code=422, detail="Request body must contain at least one property.")
     features = _build_feature_frame(homes)
