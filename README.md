@@ -37,17 +37,6 @@ docker compose up --build
 
 The API will be available at `http://localhost:8000`.
 
-## Local Workflow
-
-If you prefer to run locally instead of Docker:
-
-```sh
-python -m pip install -r requirements.txt
-python create_model.py
-python -m pytest tests/test_api.py -v
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
 ## API Endpoints
 
 - `GET /health` - health check

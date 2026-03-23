@@ -3,6 +3,7 @@ import pathlib
 import pickle
 from typing import List
 from typing import Tuple
+from xml.parsers.expat import model
 
 import pandas
 from sklearn import model_selection
@@ -10,8 +11,17 @@ from sklearn import neighbors
 from sklearn import pipeline
 from sklearn import preprocessing
 
-SALES_PATH = "data/kc_house_data.csv"
-DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    median_absolute_error,
+    r2_score,
+)
+
+DATA_DIR = "data"
+SALES_PATH = f"{DATA_DIR}/kc_house_data.csv"
+DEMOGRAPHICS_PATH = f"{DATA_DIR}/zipcode_demographics.csv"
 SALES_COLUMN_SELECTION = [
     'price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors',
     'sqft_above', 'sqft_basement', 'zipcode'
@@ -52,7 +62,7 @@ def load_data(
 def main():
     """Load data, train model, and export artifacts."""
     x, y = load_data(SALES_PATH, DEMOGRAPHICS_PATH, SALES_COLUMN_SELECTION)
-    x_train, _x_test, y_train, _y_test = model_selection.train_test_split(
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(
         x, y, random_state=42)
 
     model = pipeline.make_pipeline(preprocessing.RobustScaler(),
@@ -67,6 +77,37 @@ def main():
               open(output_dir / "model_features.json", 'w'))
 
     print(f"Model artifacts written to {output_dir.resolve()}")
+
+    # Test performance on _x_test
+    y_pred = model.predict(x_test)
+
+    # Add performance metrics
+
+    rmse = mean_squared_error(y_test, y_pred, squared=False)
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    medae = median_absolute_error(y_test, y_pred)
+    mape = mean_absolute_percentage_error(y_test, y_pred)
+
+    bias = (y_pred - y_test).mean()
+    wape = (y_test - y_pred).abs().sum() / y_test.abs().sum()
+    pct_within_10 = ((y_test - y_pred).abs() / y_test <= 0.10).mean()
+    pct_within_20 = ((y_test - y_pred).abs() / y_test <= 0.20).mean()
+
+    # Create a DataFrame to hold the metrics
+    metrics_df = pandas.DataFrame({
+        "metric": [
+            "rmse", "mae", "r2", "medae", "mape", "bias", "wape",
+            "pct_within_10", "pct_within_20"
+        ],
+        "value": [
+            rmse, mae, r2, medae, mape, bias, wape, pct_within_10,
+            pct_within_20
+        ]
+    })
+
+    # Save the metrics to a json file
+    metrics_df.to_json(output_dir / "test_metrics.json", orient="records")
 
 
 if __name__ == "__main__":

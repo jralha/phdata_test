@@ -1,4 +1,6 @@
 """Tests for the Sound Realty prediction API."""
+import json
+import math
 from pathlib import Path
 from time import perf_counter
 
@@ -39,6 +41,7 @@ VALID_HOME_2 = {
 }
 
 UNSEEN_DATA_PATH = Path("data/future_unseen_examples.csv")
+METRICS_PATH = Path("model/test_metrics.json")
 
 def test_health_check(client):
     response = client.get("/health")
@@ -98,3 +101,48 @@ def test_batch_scores_full_unseen_dataset_within_time_budget(client):
     assert len(body["predicted_prices"]) == len(unseen)
     assert all(price > 0 for price in body["predicted_prices"])
     assert elapsed < 5.0
+
+
+def test_reports_saved_holdout_metrics_if_valid():
+    """Report model metrics and validate the saved metric values are sane."""
+    assert METRICS_PATH.exists(), (
+        "Expected model/test_metrics.json. Run training first: "
+        "docker compose --profile train run --rm train"
+    )
+
+    metrics_records = json.loads(METRICS_PATH.read_text())
+    assert isinstance(metrics_records, list)
+    assert metrics_records, "Expected at least one metric record"
+
+    metrics = {
+        record["metric"]: float(record["value"]) for record in metrics_records
+    }
+
+    required_metrics = {
+        "rmse",
+        "mae",
+        "r2",
+        "medae",
+        "mape",
+        "bias",
+        "wape",
+        "pct_within_10",
+        "pct_within_20",
+    }
+    missing = required_metrics - set(metrics)
+    assert not missing, f"Missing required metrics: {sorted(missing)}"
+
+    # Reports metrics in test output when running with -s (useful for CI logs)
+    print("Saved holdout metrics:", json.dumps(metrics, sort_keys=True))
+
+    for name, value in metrics.items():
+        assert math.isfinite(value), f"Metric {name} must be finite"
+
+    # Basic validity checks, not quality thresholds.
+    assert metrics["rmse"] >= 0
+    assert metrics["mae"] >= 0
+    assert metrics["medae"] >= 0
+    assert metrics["mape"] >= 0
+    assert metrics["wape"] >= 0
+    assert 0 <= metrics["pct_within_10"] <= 1
+    assert 0 <= metrics["pct_within_20"] <= 1
