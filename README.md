@@ -37,6 +37,21 @@ docker compose up --build
 
 The API will be available at `http://localhost:8000`.
 
+### 4. Submit unseen examples to the running endpoint
+
+Run the helper script to send rows from `data/future_unseen_examples.csv`:
+
+```sh
+python scripts/submit_unseen_examples.py
+```
+
+Optional flags:
+
+```sh
+python scripts/submit_unseen_examples.py --limit 10
+python scripts/submit_unseen_examples.py --api-url http://localhost:8000/predict/batch
+```
+
 ## API Endpoints
 
 - `GET /health` - health check
