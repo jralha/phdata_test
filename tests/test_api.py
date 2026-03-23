@@ -40,6 +40,18 @@ VALID_HOME_2 = {
     "zipcode": "98115",
 }
 
+# Original minimal columns used by the first baseline model.
+MINIMAL_HOME_ORIGINAL_COLUMNS = {
+    "bedrooms": 3,
+    "bathrooms": 1.75,
+    "sqft_living": 1340,
+    "sqft_lot": 7210,
+    "floors": 1.0,
+    "sqft_above": 1340,
+    "sqft_basement": 0,
+    "zipcode": "98031",
+}
+
 UNSEEN_DATA_PATH = Path("data/future_unseen_examples.csv")
 METRICS_PATH = Path("model/test_metrics.json")
 
@@ -63,6 +75,16 @@ def test_batch_multiple_homes_returns_matching_count(client):
     assert response.status_code == 200
     body = response.json()
     assert len(body["predicted_prices"]) == 2
+
+
+def test_batch_original_minimal_columns_only_still_work(client):
+    """Endpoint should remain backward-compatible with the original minimal payload."""
+    response = client.post("/predict/batch", json=[MINIMAL_HOME_ORIGINAL_COLUMNS])
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["predicted_prices"]) == 1
+    assert isinstance(body["predicted_prices"][0], float)
+    assert body["predicted_prices"][0] > 0
 
 
 def test_batch_optional_fields_accepted(client):
