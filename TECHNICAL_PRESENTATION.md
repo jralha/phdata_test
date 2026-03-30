@@ -38,14 +38,10 @@ Prediction Cache Layer (optional)
 - Algorithm: KNeighborsRegressor (k=10)
 - Holdout R²: 0.728
 - RMSE: $164K
-- **Problem**: Underfitting, high bias
+- **Problem**: Underfitting
 
 **Improved Model (Current):**
 - Algorithm: RandomForestRegressor (400 estimators)
-- Hyperparameters:
-  - max_features: 0.6
-  - max_depth: None (auto)
-  - min_samples_leaf: 1
 - Holdout R²: **0.885** (+21.6% vs baseline)
 - Holdout RMSE: **$131K** (-20.0% vs baseline)
 - Holdout MAPE: **12.8%**
